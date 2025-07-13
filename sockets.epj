@@ -1,0 +1,46 @@
+{
+   "Version" : 0.2,
+   "ModuleName" : "eCSockets",
+   "Options" : {
+      "Warnings" : "All",
+      "TargetType" : "SharedLibrary",
+      "TargetFileName" : "eCSockets",
+      "Libraries" : [
+         "ecrt"
+      ]
+   },
+   "Configurations" : [
+      {
+         "Name" : "Debug",
+         "Options" : {
+            "Debug" : true,
+            "Optimization" : "None",
+            "PreprocessorDefinitions" : [
+               "_DEBUG",
+               "IMPORT_STATIC=\"\""
+            ],
+            "FastMath" : false
+         }
+      },
+      {
+         "Name" : "Release",
+         "Options" : {
+            "Debug" : false,
+            "Optimization" : "Speed",
+            "PreprocessorDefinitions" : [
+               "IMPORT_STATIC=\"\""
+            ],
+            "FastMath" : true
+         }
+      }
+   ],
+   "Files" : [
+      "network.ec",
+      "Service.ec",
+      "Socket.ec"
+   ],
+   "ResourcesPath" : "",
+   "Resources" : [
+
+   ]
+}
