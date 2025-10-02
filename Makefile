@@ -110,6 +110,40 @@ PRJ_CFLAGS += \
 ECFLAGS += -module $(MODULE)
 CECFLAGS += -cpp $(_CPP)
 
+# PLATFORM-SPECIFIC OPTIONS
+
+ifdef WINDOWS_TARGET
+
+ifndef STATIC_LIBRARY_TARGET
+OFLAGS +=  -static-libgcc -static-libstdc++
+
+LIBS += \
+	-Wl,-Bdynamic \
+	$(call _L,ws2_32) \
+	-Wl,-Bstatic
+endif
+
+else
+ifdef LINUX_TARGET
+
+ifndef STATIC_LIBRARY_TARGET
+
+LIBS +=
+
+endif
+
+else
+ifdef OSX_TARGET
+
+ifndef STATIC_LIBRARY_TARGET
+LIBS +=
+
+endif
+
+endif
+endif
+endif
+
 # TARGETS
 
 all: objdir $(TARGET)

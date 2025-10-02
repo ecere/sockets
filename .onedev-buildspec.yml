@@ -1,0 +1,147 @@
+version: 20
+jobs:
+- name: Build
+  jobExecutor: DockerExecutor
+  steps:
+  - !CheckoutStep
+    name: Checkout
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: Build
+    runInContainer: true
+    image: ubuntu:18.04
+    interpreter: !DefaultInterpreter
+      commands:
+      - rm /etc/apt/apt.conf.d/docker-clean
+      - echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/98keep-debs
+      - echo 'APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/99keep-debs
+      - dpkg --add-architecture i386
+      - apt -y update
+      - apt -y install build-essential
+#      - apt -y install gcc-8
+      - apt -y install gcc-multilib
+      - apt -y install binutils-mingw-w64
+      - apt -y install pkg-config
+      - tar xf mingw-w64/*.tar.gz &&
+        tar xf mingw-w64-runtime/*.tar.gz &&
+        dpkg -i mingw-w64-common_6.0.0-3_all.deb &&
+        dpkg -i mingw-w64-x86-64-dev_6.0.0-3_all.deb &&
+        dpkg -i mingw-w64-i686-dev_6.0.0-3_all.deb &&
+        dpkg -i mingw-w64-tools_6.0.0-3_amd64.deb &&
+        dpkg -i gcc-mingw-w64-base_8.4.0-1ubuntu1~18.04+21.4_amd64.deb &&
+        dpkg -i gcc-mingw-w64-x86-64_8.4.0-1ubuntu1~18.04+21.4_amd64.deb &&
+        dpkg -i gcc-mingw-w64-i686_8.4.0-1ubuntu1~18.04+21.4_amd64.deb &&
+        dpkg -i gcc-mingw-w64_8.4.0-1ubuntu1~18.04+21.4_all.deb &&
+        dpkg -i g++-mingw-w64-x86-64_8.4.0-1ubuntu1~18.04+21.4_amd64.deb &&
+        dpkg -i g++-mingw-w64-i686_8.4.0-1ubuntu1~18.04+21.4_amd64.deb &&
+        dpkg -i g++-mingw-w64_8.4.0-1ubuntu1~18.04+21.4_all.deb &&
+        dpkg -i mingw-w64_6.0.0-3_all.deb
+      - apt -y install make
+      - apt -y install git
+      - apt -y install wine-stable
+      - apt -y install wine64
+#      - update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 100
+#       tar czf @project_name@-@tag@-@branch@-@commit_hash@-@build_number@-bindings.tar.gz bindings/
+#        cp obj/static.linux/libeCSocketsStatic.a linux/lib &&
+#        cp obj/static.linux.x32/libeCSocketsStatic.a linux.x32/lib &&
+#        cp obj/static.win32/libeCSocketsStatic.a windows/lib &&
+#        cp obj/static.win32.x32/libeCSocketsStatic.a windows.x32/lib &&
+      - tar xf eC/*output-linux*.tar.gz -C / &&
+        tar xf eC/*extras*.tar.gz -C eC/ &&
+        mkdir eC/obj/ && tar xf eC/*binaries-linux-x86_64.tar.gz -C eC/obj/ &&
+        tar xf eC/*binaries-windows-x86_64.tar.gz -C eC/obj/ &&
+        tar xf eC/*binaries-linux-i686.tar.gz -C eC/obj/ &&
+        tar xf eC/*binaries-windows-i686.tar.gz -C eC/obj/ &&
+        tar xf win32-patches/*.tar.gz &&
+        mkdir $(pwd)/.wine && export WINEPREFIX=$(pwd)/.wine &&
+        git config --global --add safe.directory '*' &&
+        export EC_SDK_SRC=$(pwd)/eC &&
+        make STATIC_SYSLIBS=y -j2 && mkdir linux && mkdir linux/lib &&
+        cp obj/release.linux/libeCSockets.so linux/lib &&
+        tar czf @project_name@-@tag@-@branch@-@commit_hash@-@build_number@-linux-x86_64.tar.gz linux &&
+        make ARCH=x32 STATIC_SYSLIBS=y -j2 && mkdir linux.x32 && mkdir linux.x32/lib &&
+        cp obj/release.linux.x32/libeCSockets.so linux.x32/lib &&
+        tar czf @project_name@-@tag@-@branch@-@commit_hash@-@build_number@-linux-i686.tar.gz linux.x32 &&
+        make PLATFORM=win32 -j2 &&
+        mkdir windows && mkdir windows/bin && mkdir windows/lib &&
+        cp obj/release.win32/eCSockets.dll windows/bin &&
+        tar czf @project_name@-@tag@-@branch@-@commit_hash@-@build_number@-windows-x86_64.tar.gz windows &&
+        make PLATFORM=win32 ARCH=x32 -j2 &&
+        mkdir windows.x32 && mkdir windows.x32/bin && mkdir windows.x32/lib &&
+        cp obj/release.win32.x32/eCSockets.dll windows.x32/bin &&
+        tar czf @project_name@-@tag@-@branch@-@commit_hash@-@build_number@-windows-i686.tar.gz windows.x32
+    useTTY: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !PublishArtifactStep
+    name: Artefacts
+    artifacts: '@project_name@-@tag@-@branch@-@commit_hash@-@build_number@-linux-x86_64.tar.gz'
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !PublishArtifactStep
+    name: Artefacts32bit
+    artifacts: '@project_name@-@tag@-@branch@-@commit_hash@-@build_number@-linux-i686.tar.gz'
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !PublishArtifactStep
+    name: ArtefactsWindows
+    artifacts: '@project_name@-@tag@-@branch@-@commit_hash@-@build_number@-windows-x86_64.tar.gz'
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !PublishArtifactStep
+    name: ArtefactsWindows32Bit
+    artifacts: '@project_name@-@tag@-@branch@-@commit_hash@-@build_number@-windows-i686.tar.gz'
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  triggers:
+  - !PullRequestUpdateTrigger
+    projects: sockets
+  - !BranchUpdateTrigger
+    projects: sockets
+  projectDependencies:
+  - projectPath: win32-patches
+    buildProvider: !LastFinishedBuild
+      jobName: Build
+      refName: refs/heads/master
+    artifacts: '**'
+    accessTokenSecret: ecere-sdk-access
+    destinationPath: win32-patches
+  - projectPath: eC
+    buildProvider: !LastFinishedBuild
+      jobName: Build
+      refName: refs/heads/main
+    artifacts: '**'
+    accessTokenSecret: ecere-sdk-access
+    destinationPath: eC
+  - projectPath: upx
+    buildProvider: !LastFinishedBuild
+      jobName: Build
+      refName: refs/heads/master
+    artifacts: '**'
+    accessTokenSecret: ecere-sdk-access
+    destinationPath: upx
+  - projectPath: mingw-w64
+    buildProvider: !LastFinishedBuild
+      jobName: Build
+      refName: refs/heads/master
+    artifacts: '**'
+    accessTokenSecret: ecere-sdk-access
+    destinationPath: mingw-w64
+  - projectPath: mingw-w64-runtime
+    buildProvider: !LastFinishedBuild
+      jobName: Build
+      refName: refs/heads/master
+    artifacts: '**'
+    accessTokenSecret: ecere-sdk-access
+    destinationPath: mingw-w64-runtime
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  caches:
+  - key: AptCache
+    path: /var/cache/apt
+  - key: AptList
+    path: /var/lib/apt/lists
+  timeout: 3600
+  postBuildActions:
+  - !SendNotificationAction
+    condition: failed or (successful and previous is failed)
+    receivers: committers and submitter
